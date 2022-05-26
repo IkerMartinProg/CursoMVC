@@ -25,8 +25,25 @@ namespace CapaPresentacionAdmin.Controllers
         public JsonResult ListarUsuarios() { 
             List<Usuario> oLista = new List<Usuario>();
             oLista = new CN_Usuarios().Listar();
-            //return Json(new { elemento = oLista, estado = true},JsonRequestBehavior.AllowGet);
             return Json(new { data = oLista}, JsonRequestBehavior.AllowGet);
+        }
+
+        //URL que envia valores
+        [HttpPost]
+        public JsonResult GuardarUsuario(Usuario objeto) {
+            object resultado;
+            string mensaje = string.Empty;
+
+            if (objeto.IdUsuario == 0)
+            {
+                resultado = new CN_Usuarios().Registrar(objeto, out mensaje);
+            }
+            else {
+                resultado = new CN_Usuarios().Editar(objeto, out mensaje);
+            }
+
+            return Json(new { resultado = resultado, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
+
         }
 
     }

@@ -42,30 +42,32 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title" id="exampleModalLabel">Usuarios</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body g-2">
+            <div class="modal-body">
+
+                <input id="txtid" type="hidden" value="0" />
             
-                <div class="row">
+                <div class="row g-2">
 
                     <div class="col-sm-6">
                         <label for="txtnombres" class="form-label">Nombres</label>
-                        <input type="text" class="form-control" id="txtnombres">
+                        <input type="text" class="form-control" id="txtnombres" autocomplete="off">
                     </div>
 
                     <div class="col-sm-6">
                         <label for="txtapellidos" class="form-label">Apellidos</label>
-                        <input type="text" class="form-control" id="txtapellidos">
+                        <input type="text" class="form-control" id="txtapellidos" autocomplete="off">
                     </div>
 
                     <div class="col-sm-6">
                         <label for="txtcorreo" class="form-label">Correo</label>
-                        <input type="email" class="form-control" id="txtcorreo">
+                        <input type="email" class="form-control" id="txtcorreo" autocomplete="off">
                     </div>
 
                     <div class="col-sm-6">
@@ -78,10 +80,18 @@
 
                 </div>
 
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <div id="mensajeError" class="alert alert-danger" role="alert">
+                            A simple danger alert—check it out!
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-primary" onclick="Guardar()">Guardar</button>
             </div>
         </div>
     </div>
@@ -91,6 +101,7 @@
     <script>
 
         var tabledata;
+        var filaSeleccionada;
 
         tabledata = $('#tabla').DataTable({
             responsive: true,
@@ -129,7 +140,16 @@
         @*Abrir el formulario*@
         function abrirModal(json) {
 
+            $("#txtid").val(0);
+            $("#txtnombres").val("");
+            $("#txtapellidos").val("");
+            $("#txtcorreo").val("");
+            $("#cboactivo").val(1);
+
+            $("#mensajeError").hide();
+
             if (json != null) {
+                $("#txtid").val(json.IdUsuario);
                 $("#txtnombres").val(json.Nombres);
                 $("#txtapellidos").val(json.Apellidos);
                 $("#txtcorreo").val(json.Correo);
@@ -145,12 +165,96 @@
         *@
         $("#tabla tbody").on("click", '.btn-editar', function () {
 
-            var filaSeleccionada = $(this).closest("tr");
+            filaSeleccionada = $(this).closest("tr");
 
             var data = tabledata.row(filaSeleccionada).data();
 
             abrirModal(data)
         })
+
+        @*Guardar los registros insertados*@
+        function Guardar() {
+
+            var Usuario = {
+
+                IdUsuario: $("#txtid").val(),
+                Activo: $("#cboactivo").val() == 1 ? true: false,
+                Nombres: $("#txtnombres").val(),
+                Apellidos: $("#txtapellidos").val(),
+                Correo: $("#txtcorreo").val()
+
+            }
+
+
+            jQuery.ajax({
+                url: '@Url.Action("GuardarUsuario", "Home")',
+                type: "POST",
+                data: JSON.stringify({ objeto: Usuario}),
+                dataType: "json",
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+
+                    $(".modal-body").LoadingOverlay("hide");
+
+                    // El ID estándar indica que se va a crear un nuevo usuario
+                    // En caso contrario, se especifica el ID del usuario a editar
+
+                    // USUARIO NUEVO
+                    if (Usuario.IdUsuario == 0) {
+
+                        if (data.resultado != 0) {
+
+                            Usuario.IdUsuario = data.resultado;
+
+                            // Añadimos el nuevo usuario a la tabla visual
+                            tabledata.row.add(Usuario).draw(false);
+
+                            $("#FormModal").modal("hide");
+
+                        } else {
+
+                            $("#mensajeError").text(data.mensaje);
+                            $("#mensajeError").show();
+
+                        }
+
+                    // USUARIO EDITAR
+                    } else {
+
+                        if (data.resultado) {
+
+                            // Editamos el usuario (solo de manera visual)
+                            tabledata.row(filaSeleccionada).data(Usuario).draw(false);
+                            filaSeleccionada = null;
+
+                            $("#FormModal").modal("hide");
+
+                        } else {
+
+                            $("#mensajeError").text(data.mensaje);
+                            $("#mensajeError").show();
+
+                        }
+
+                    }
+
+                },
+                error: function (error) {
+
+                    $(".modal-body").LoadingOverlay("hide");
+                    $("#mensajeError").text("Error Ajax");
+                    $("#mensajeError").show();
+                },
+                beforeSend: function () {
+                    $(".modal-body").LoadingOverlay("show", {
+                        imageResizeFactor: 2,
+                        text: "Cargando...",
+                        size: 14
+                    })
+                }
+            });
+
+        }
 
     </script>
 
